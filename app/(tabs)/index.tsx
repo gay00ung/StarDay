@@ -1,7 +1,7 @@
 import { HOROSCOPE_PROMPT, OPENAI_CONFIG } from '@/constants/openai';
 import { Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const API_KEY = OPENAI_CONFIG.apiKey;
@@ -13,6 +13,31 @@ type Fortune = {
   content: string;
   lucky_item: string;
   lucky_color: string;
+};
+
+// 별자리 한글 이름 -> 영어 이름 매핑 테이블
+const ZODIAC_MAP: { [key: string]: string } = {
+  "양자리": "Aries",
+  "황소자리": "Taurus",
+  "쌍둥이자리": "Gemini",
+  "게자리": "Cancer",
+  "사자자리": "Leo",
+  "처녀자리": "Virgo",
+  "천칭자리": "Libra",
+  "전갈자리": "Scorpio",
+  "사수자리": "Sagittarius",
+  "염소자리": "Capricorn",
+  "물병자리": "Aquarius",
+  "물고기자리": "Pisces",
+};
+
+// 이미지를 가져오는 함수 (마이크로소프트 3D 이모지 CDN 사용)
+const getZodiacImage = (koreanSign: string) => {
+  const englishName = ZODIAC_MAP[koreanSign];
+  if (!englishName) return null; // 매핑 안되면 없음
+
+  // MS Fluent Emoji 저장소 URL 조합
+  return `https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/${englishName}/3D/${englishName.toLowerCase()}_3d.png`;
 };
 
 export default function App() {
@@ -77,6 +102,13 @@ export default function App() {
       {/* 오른쪽: 내용 */}
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
+          {/* 이미지를 띄움 */}
+          <Image 
+            source={{ uri: getZodiacImage(item.sign) || undefined }} 
+            style={styles.zodiacImage}
+            resizeMode="contain"
+          />
+
           <Text style={styles.signText}>{item.sign}</Text>
           {item.rank === 1 && <Sparkles color="#FFD700" size={16} />}
         </View>
@@ -177,13 +209,18 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   signText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginRight: 5,
+  },
+  zodiacImage: {
+    width: 30, 
+    height: 30, 
+    marginRight: 8
   },
   fortuneText: {
     fontSize: 14,
