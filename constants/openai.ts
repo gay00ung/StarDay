@@ -29,7 +29,5 @@ export const HOROSCOPE_PROMPT = `
 // 모델 설정 등 상수 분리
 export const OPENAI_CONFIG = {
   apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || "", // .env에서 불러옴
-  endpoint: "https://api.openai.com/v1/chat/completions",
   model:  "gpt-5-nano", // 별로면 gpt-5-mini 이걸로 교체 예정 ,,
-//   temperature: 0.8,
 };    
