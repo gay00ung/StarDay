@@ -1,15 +1,23 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { FortuneCard } from '@/components/horoscope/FortuneCard';
 import { LoadingView } from '@/components/horoscope/LoadingView';
 import { API_URLS } from '@/config/apiUrls';
+import { Colors, Palette } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchHoroscope } from '@/services/horoscopeService';
 import type { Fortune } from '@/types/horoscope';
-import { useEffect, useState } from 'react';
-import { Alert, FlatList, Image, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function App() {
   const [data, setData] = useState<Fortune[]>([]);
   const [loading, setLoading] = useState(true);
+  const colorScheme = useColorScheme() ?? 'light';
+
+  const themeColors = Colors[colorScheme];
+
+  const styles = useMemo(() => createStyles(themeColors, colorScheme), [themeColors, colorScheme]);
 
   // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
   useEffect(() => {
@@ -30,7 +38,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Image
@@ -56,34 +64,44 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingTop: 20,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  titleEmoji: {
-    width: 28,
-    height: 28,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  listContent: {
-    padding: 16,
-  },
-});
+const createStyles = (
+  themeColors: (typeof Colors)[keyof typeof Colors],
+  theme: 'light' | 'dark'
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: themeColors.background,
+    },
+    header: {
+      padding: 20,
+      backgroundColor: themeColors.surface,
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+      paddingTop: 20,
+      shadowColor: themeColors.highlight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    titleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    titleEmoji: {
+      width: 28,
+      height: 28,
+      tintColor: theme === 'dark' ? Palette.fairyGold : Palette.starCuteOrange,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: themeColors.text,
+    },
+    listContent: {
+      padding: 16,
+    },
+  });

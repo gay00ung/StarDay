@@ -5,25 +5,52 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export const Palette = {
+  starYellow: '#FFE48B',
+  starOutline: '#6A3B1F',
+  midnightPurple: '#3B2B87',
+  auroraIndigo: '#4D3ECF',
+  neoBlue: '#3E63FF',
+  magicalPink: '#E6A1FF',
+  sparkleWhite: '#FFFFFF',
+  softWarmGlow: '#FFECE1',
+  fairyGold: '#FFDB70',
+  lavenderBase: '#DCC5FF',
+  softPurple: '#C5A6F1',
+  astroLilac: '#B28DEB',
+  cheekPink: '#FFACBB',
+  ribbonPink: '#F596C4',
+  starCuteOrange: '#FFCC80',
+} as const;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: Palette.starOutline,
+    mutedText: Palette.astroLilac,
+    background: Palette.softWarmGlow,
+    surface: Palette.sparkleWhite,
+    tint: Palette.ribbonPink,
+    icon: Palette.astroLilac,
+    tabIconDefault: Palette.astroLilac,
+    tabIconSelected: Palette.ribbonPink,
+    border: Palette.fairyGold,
+    highlight: Palette.starYellow,
+    badge: Palette.cheekPink,
+    success: Palette.starCuteOrange,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: Palette.sparkleWhite,
+    mutedText: Palette.lavenderBase,
+    background: Palette.midnightPurple,
+    surface: Palette.auroraIndigo,
+    tint: Palette.fairyGold,
+    icon: Palette.starYellow,
+    tabIconDefault: Palette.magicalPink,
+    tabIconSelected: Palette.fairyGold,
+    border: Palette.magicalPink,
+    highlight: Palette.starYellow,
+    badge: Palette.ribbonPink,
+    success: Palette.starCuteOrange,
   },
 };
 

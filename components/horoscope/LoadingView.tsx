@@ -1,10 +1,18 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
 export const LoadingView = () => {
+  const theme = useColorScheme() ?? 'light';
+  const themeColors = Colors[theme];
+
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#FF6B6B" />
-      <Text style={styles.loadingText}>별들에게 물어보는 중...</Text>
+      <ActivityIndicator size="large" color={themeColors.tint} />
+      <Text style={[styles.loadingText, { color: themeColors.mutedText }]}>
+        별들에게 물어보는 중...
+      </Text>
     </View>
   );
 };
@@ -17,6 +25,5 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#888',
   },
 });
