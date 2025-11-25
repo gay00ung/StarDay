@@ -1,98 +1,107 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { FortuneCard } from '@/components/horoscope/FortuneCard';
+import { LoadingView } from '@/components/horoscope/LoadingView';
+import { API_URLS } from '@/config/apiUrls';
+import { Colors, Palette } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { fetchHoroscope } from '@/services/horoscopeService';
+import type { Fortune } from '@/types/horoscope';
 
-export default function HomeScreen() {
+export default function App() {
+  const [data, setData] = useState<Fortune[]>([]);
+  const [loading, setLoading] = useState(true);
+  const colorScheme = useColorScheme() ?? 'light';
+
+  const themeColors = Colors[colorScheme];
+
+  const styles = useMemo(() => createStyles(themeColors, colorScheme), [themeColors, colorScheme]);
+
+  // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
+  useEffect(() => {
+    loadHoroscope();
+  }, []);
+
+  const loadHoroscope = async () => {
+    try {
+      const result = await fetchHoroscope();
+      setData(result);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("오류", error instanceof Error ? error.message : "운세를 불러오는데 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+      <View style={styles.header}>
+        <View style={styles.titleContainer}>
+          <Image
+            source={{ uri: API_URLS.CRYSTAL_BALL_EMOJI }}
+            style={styles.titleEmoji}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>오늘의 별자리 랭킹</Text>
+        </View>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {loading ? (
+        <LoadingView />
+      ) : (
+        <FlatList
+          data={data}
+          renderItem={({ item }) => <FortuneCard fortune={item} />}
+          keyExtractor={(item) => item.rank.toString()}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+const createStyles = (
+  themeColors: (typeof Colors)[keyof typeof Colors],
+  theme: 'light' | 'dark'
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: themeColors.background,
+    },
+    header: {
+      padding: 20,
+      backgroundColor: themeColors.surface,
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+      paddingTop: 20,
+      shadowColor: themeColors.highlight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    titleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    titleEmoji: {
+      width: 28,
+      height: 28,
+      tintColor: theme === 'dark' ? Palette.fairyGold : Palette.starCuteOrange,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: themeColors.text,
+    },
+    listContent: {
+      padding: 16,
+    },
+  });
