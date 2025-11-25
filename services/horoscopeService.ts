@@ -3,8 +3,15 @@ import type { Fortune } from "@/types/horoscope";
 
 export const fetchHoroscope = async (): Promise<Fortune[]> => {
   try {
-    // 1. 오늘 날짜 구하기 (YYYY-MM-DD 형식)
-    const today = new Date().toISOString().split('T')[0];
+    // 1. 오늘 날짜 구하기 (KST 기준, YYYY-MM-DD 형식)
+    // Use Intl with a fixed timezone to avoid device-local offsets.
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const today = formatter.format(new Date()); // e.g., 2025-01-07
 
     console.log(`📅 Supabase에서 ${today} 운세를 조회합니다.`);
 

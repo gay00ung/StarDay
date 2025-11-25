@@ -1,6 +1,6 @@
+import { Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { Sparkles } from 'lucide-react-native';
 
 import { Colors, Palette } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,6 +15,7 @@ export const FortuneCard = ({ fortune }: FortuneCardProps) => {
   const theme = useColorScheme() ?? 'light';
   const themeColors = Colors[theme];
   const styles = useMemo(() => createStyles(themeColors, theme), [themeColors, theme]);
+  const zodiacUri = getZodiacImage(fortune.sign);
 
   return (
     <View style={[styles.card, fortune.rank === 1 && styles.firstPlaceCard]}>
@@ -29,11 +30,9 @@ export const FortuneCard = ({ fortune }: FortuneCardProps) => {
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
           {/* 이미지를 띄움 */}
-          <Image
-            source={{ uri: getZodiacImage(fortune.sign) || undefined }}
-            style={styles.zodiacImage}
-            resizeMode="contain"
-          />
+          {zodiacUri ? (
+            <Image source={{ uri: zodiacUri }} style={styles.zodiacImage} resizeMode="contain" />
+          ) : null}
 
           <Text style={styles.signText}>{fortune.sign}</Text>
           {fortune.rank === 1 && <Sparkles color={themeColors.highlight} size={16} />}

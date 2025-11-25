@@ -50,8 +50,26 @@ Deno.serve(async (req) => {
     })
 
     const openAIJson = await openAIResponse.json()
+
+    // Validate OpenAI response structure
+    if (
+      !openAIResponse.ok ||
+      !openAIJson.choices ||
+      !Array.isArray(openAIJson.choices) ||
+      openAIJson.choices.length === 0 ||
+      !openAIJson.choices[0].message ||
+      typeof openAIJson.choices[0].message.content !== 'string'
+    ) {
+      throw new Error('Invalid response structure from OpenAI API')
+    }
+
     const content = openAIJson.choices[0].message.content
-    const parsedData = JSON.parse(content)
+    let parsedData
+    try {
+      parsedData = JSON.parse(content)
+    } catch (e) {
+      throw new Error('Failed to parse OpenAI content as JSON')
+    }
 
     // 2. 오늘 날짜 (KST 기준 계산)
     // 서버는 UTC이므로 9시간을 더해야 한국 날짜가 됩니다.
