@@ -1,6 +1,6 @@
-import { API_URLS } from '@/config/apiUrls';
 import { FortuneCard } from '@/components/horoscope/FortuneCard';
 import { LoadingView } from '@/components/horoscope/LoadingView';
+import { API_URLS } from '@/config/apiUrls';
 import { fetchHoroscope } from '@/services/horoscopeService';
 import type { Fortune } from '@/types/horoscope';
 import { useEffect, useState } from 'react';
