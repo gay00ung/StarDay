@@ -1,52 +1,110 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Image, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { FortuneCard } from '@/components/horoscope/FortuneCard';
-import { LoadingView } from '@/components/horoscope/LoadingView';
-import { API_URLS } from '@/config/apiUrls';
-import { Colors, Palette } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchHoroscope } from '@/services/horoscopeService';
-import type { Fortune } from '@/types/horoscope';
+import { AppExitHandler } from "@/components/AppExitHandler";
+import { FortuneCard } from "@/components/horoscope/FortuneCard";
+import { LoadingView } from "@/components/horoscope/LoadingView";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { fetchHoroscope } from "@/services/horoscopeService";
+import type { Fortune } from "@/types/horoscope";
+
+const formatKoreanDate = () => {
+  const now = new Date();
+  const datePart = now.toLocaleDateString("ko-KR", {
+    month: "long",
+    day: "numeric",
+  });
+  const weekdayPart = now.toLocaleDateString("ko-KR", { weekday: "long" });
+  return `${datePart} ${weekdayPart}`;
+};
 
 export default function App() {
+  AppExitHandler();
+
   const [data, setData] = useState<Fortune[]>([]);
   const [loading, setLoading] = useState(true);
-  const colorScheme = useColorScheme() ?? 'light';
+  const [refreshing, setRefreshing] = useState(false);
+  const [todayLabel, setTodayLabel] = useState(() => formatKoreanDate());
+  const colorScheme = useColorScheme() ?? "light";
 
   const themeColors = Colors[colorScheme];
 
-  const styles = useMemo(() => createStyles(themeColors, colorScheme), [themeColors, colorScheme]);
+  const styles = useMemo(
+    () => createStyles(themeColors, colorScheme),
+    [themeColors, colorScheme]
+  );
+
+  const loadHoroscope = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      setTodayLabel(formatKoreanDate());
+
+      if (withLoading) {
+        setLoading(true);
+      }
+
+      try {
+        const result = await fetchHoroscope();
+        setData(result);
+      } catch (error) {
+        console.error(error);
+        Alert.alert(
+          "오류",
+          error instanceof Error
+            ? error.message
+            : "운세를 불러오는데 실패했습니다."
+        );
+      } finally {
+        if (withLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    []
+  );
 
   // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
   useEffect(() => {
-    loadHoroscope();
-  }, []);
+    loadHoroscope({ withLoading: true });
+  }, [loadHoroscope]);
 
-  const loadHoroscope = async () => {
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
     try {
-      const result = await fetchHoroscope();
-      setData(result);
-    } catch (error) {
-      console.error(error);
-      Alert.alert("오류", error instanceof Error ? error.message : "운세를 불러오는데 실패했습니다.");
+      await loadHoroscope();
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [loadHoroscope]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+      <StatusBar
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+      />
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Image
-            source={{ uri: API_URLS.CRYSTAL_BALL_EMOJI }}
+          <Text style={styles.title}>오늘의 별자리 랭킹</Text>
+        </View>
+        <View style={styles.subTitleContainer}>
+          {/* <Image
+            source={{ uri: API_URLS.CALENDAR_EMOJI }}
             style={styles.titleEmoji}
             resizeMode="contain"
-          />
-          <Text style={styles.title}>오늘의 별자리 랭킹</Text>
+          /> */}
+          <Text style={styles.subTitle} numberOfLines={1}>
+            {todayLabel}
+          </Text>
         </View>
       </View>
 
@@ -58,6 +116,14 @@ export default function App() {
           renderItem={({ item }) => <FortuneCard fortune={item} />}
           keyExtractor={(item) => item.rank.toString()}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={themeColors.text}
+              colors={[themeColors.text]}
+            />
+          }
         />
       )}
     </SafeAreaView>
@@ -66,7 +132,7 @@ export default function App() {
 
 const createStyles = (
   themeColors: (typeof Colors)[keyof typeof Colors],
-  theme: 'light' | 'dark'
+  theme: "light" | "dark"
 ) =>
   StyleSheet.create({
     container: {
@@ -76,7 +142,7 @@ const createStyles = (
     header: {
       padding: 20,
       backgroundColor: themeColors.surface,
-      alignItems: 'center',
+      alignItems: "center",
       borderBottomWidth: 1,
       borderBottomColor: themeColors.border,
       paddingTop: 20,
@@ -87,19 +153,29 @@ const createStyles = (
       elevation: 3,
     },
     titleContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: 8,
     },
     titleEmoji: {
       width: 28,
       height: 28,
-      tintColor: theme === 'dark' ? Palette.fairyGold : Palette.starCuteOrange,
     },
     title: {
       fontSize: 20,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: themeColors.text,
+    },
+    subTitleContainer: {
+      marginTop: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    subTitle: {
+      fontSize: 20,
+      color: themeColors.text,
+      lineHeight: 20,
     },
     listContent: {
       padding: 16,

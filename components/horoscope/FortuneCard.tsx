@@ -87,7 +87,7 @@ const createStyles = (
       color: themeColors.mutedText,
     },
     firstPlaceText: {
-      color: themeColors.highlight,
+      color: theme === 'light' ? Palette.midnightPurple : themeColors.highlight,
       fontSize: 24,
     },
     contentContainer: {
