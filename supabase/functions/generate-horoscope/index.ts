@@ -1,50 +1,49 @@
 // Deno 환경(서버)에서 돌아감
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// 오늘 날짜 생성
-const today = new Date();
-const yyyy = today.getFullYear();
-const mm = String(today.getMonth() + 1).padStart(2, '0');
-const dd = String(today.getDate()).padStart(2, '0');
-const weekdayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-const weekday = weekdayNames[today.getDay()];
+const weekdayNames = [
+  "일요일",
+  "월요일",
+  "화요일",
+  "수요일",
+  "목요일",
+  "금요일",
+  "토요일",
+];
 
-// 날짜 문자열
-const TODAY_STRING = `${yyyy}-${mm}-${dd}`;
-const TODAY_KOREAN = weekday;
+// 프롬프트 (상수, 템플릿용)
+const PROMPT_TEMPLATE = `
+        당신은 일본 아침 방송에서 자주 볼 수 있는 밝고 경쾌한 '오하아사 스타일'의 점성술사입니다.
+        특정 방송이나 사이트의 문장을 그대로 사용하지 말고, 전체적인 분위기만 참고하세요.
 
-// 프롬프트 (상수)
-const PROMPT = `
-        당신은 일본 아침 방송에서 자주 볼 수 있는, 밝고 경쾌한 '오하아사 스타일'의 점성술사입니다.  
-        단, 특정 실제 방송이나 사이트의 문장을 모방하거나 재현하지는 말고, 전체적인 분위기와 말투만 참고하세요.
-
-        오늘 날짜는 {{today}} ({{weekday_ko}})입니다.  
-        이 날짜는 운세를 생성할 때 참고만 하며, **응답(JSON)에는 절대 날짜, 요일, 오늘({{today}} 등)를 직접적으로 언급하지 않습니다.**  
-        예:  
-        - "2025-11-25 기준으로는…"  
-        - "화요일에는…"  
-        - "11월 25일의 운세는…"  
-        => 모두 금지합니다.
-
-        content는 날짜를 언급하지 않고, 분위기·기운·흐름 같은 **중립적이고 밝은 표현**으로 작성하세요.  
-        예:  
-        - "기회가 자연스럽게 다가오는 날입니다."  
-        - "활기찬 에너지가 흐르며 새로운 만남에 좋은 기운이에요."  
-        (날짜/요일 X)
+        오늘 날짜는 {{today}} ({{weekday_ko}})입니다.
+        이 날짜는 운세 생성의 참고 정보일 뿐이며, 응답(JSON)에는 날짜, 요일, "오늘" 등의 시간 표현을 절대 포함하지 않습니다.
 
         아래 조건을 반드시 지키세요:
-        - 출력은 반드시 **JSON 형태로만** 생성합니다.  
+
+        - 출력은 반드시 JSON 형태로만 생성합니다.
         - JSON 외 텍스트는 절대 출력하지 않습니다.
         - "ranking" 배열은 정확히 12개의 객체를 포함해야 합니다.
-        - rank는 1~12의 모든 정수를 한 번씩 포함해야 합니다.
-        - sign은 한국어 별자리 이름 12종 중 하나여야 합니다.
-        - content는 1~2문장, 밝고 긍정적, 날짜·요일·"오늘" 표시 금지.
-        - lucky_item과 lucky_color는 매번 다양하게 랜덤 생성하고, 가능한 한 중복을 피하세요.
-        - JSON은 유효한 형식으로 생성하세요.
+        - rank는 1~12의 모든 정수를 한 번씩만 사용해야 합니다 (중복 금지).
+
+        - ⚠️ 매우 중요: rank(1~12)의 순서는 매 호출마다 완전히 새롭게 생성해야 합니다.
+        - ⚠️ 고정된 순서 패턴을 반복해서는 안 됩니다.
+        - ⚠️ 이전 응답과 동일한 순위 배열을 절대로 생성하지 마세요.
+        - 순위는 완전히 무작위(random)로 결정하며, 균일한 확률로 모든 별자리가 어떤 순위든 올 수 있습니다.
+
+        - sign은 다음 12개 중 하나여야 합니다:
+          양자리, 황소자리, 쌍둥이자리, 게자리, 사자자리, 처녀자리,
+          천칭자리, 전갈자리, 사수자리, 염소자리, 물병자리, 물고기자리.
+
+        - content는 1~2문장, 밝고 긍정적 톤 사용.
+        - content에는 시간 표현(오늘/내일/요일 등)을 포함하지 않습니다.
+        - lucky_item, lucky_color는 매 호출마다 랜덤하며 하나의 결과 안에서 중복을 피하세요.
+
+        - 응답은 반드시 유효한 JSON이어야 합니다.
 
         Output format:
         {
@@ -58,76 +57,99 @@ const PROMPT = `
             }
           ]
         }
-`
+`;
 
 Deno.serve(async (req) => {
   try {
-    // 1. OpenAI 호출
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+    // 1. 오늘 날짜 (KST 기준 계산) — 여기서 한 번만 계산해서 전체에 사용
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(now.getTime() + kstOffset);
+    const todayStr = kstDate.toISOString().split("T")[0]; // "2025-11-25"
+    const weekdayKo = weekdayNames[kstDate.getDay()];
+
+    console.log(`📅 생성된 날짜(KST): ${todayStr} (${weekdayKo})`);
+
+    // 2. 프롬프트에 날짜/요일 치환
+    const PROMPT = PROMPT_TEMPLATE
+      .replaceAll("{{today}}", todayStr)
+      .replaceAll("{{weekday_ko}}", weekdayKo);
+
+    // 3. OpenAI 호출
+    const openAIResponse = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-5-mini",
+          messages: [{ role: "system", content: PROMPT }],
+          response_format: { type: "json_object" },
+        }),
       },
-      body: JSON.stringify({
-      model:  "gpt-5-nano", // 별로면 gpt-5-mini 이걸로 교체 예정 ,,
-        messages: [{ role: 'system', content: PROMPT }],
-        response_format: { type: 'json_object' },
-      }),
-    })
+    );
 
-    const openAIJson = await openAIResponse.json()
+    const openAIJson = await openAIResponse.json();
 
-    // Validate OpenAI response structure
+    // (A) OpenAI 에러 먼저 처리
+    if (!openAIResponse.ok) {
+      console.error("OpenAI error response:", openAIJson);
+      throw new Error(openAIJson.error?.message ?? "OpenAI request failed");
+    }
+
+    // (B) 구조 검증
     if (
-      !openAIResponse.ok ||
       !openAIJson.choices ||
       !Array.isArray(openAIJson.choices) ||
       openAIJson.choices.length === 0 ||
       !openAIJson.choices[0].message ||
-      typeof openAIJson.choices[0].message.content !== 'string'
+      typeof openAIJson.choices[0].message.content !== "string"
     ) {
-      throw new Error('Invalid response structure from OpenAI API')
+      console.error("Unexpected OpenAI response structure:", openAIJson);
+      throw new Error("Invalid response structure from OpenAI API");
     }
 
-    const content = openAIJson.choices[0].message.content
-    let parsedData
+    const content = openAIJson.choices[0].message.content;
+
+    let parsedData;
     try {
-      parsedData = JSON.parse(content)
+      parsedData = JSON.parse(content);
     } catch (e) {
-      throw new Error('Failed to parse OpenAI content as JSON')
+      console.error("Failed to parse JSON content:", content);
+      throw new Error("Failed to parse OpenAI content as JSON");
     }
 
-    // 2. 오늘 날짜 (KST 기준 계산)
-    // 서버는 UTC이므로 9시간을 더해야 한국 날짜가 됩니다.
-    const now = new Date()
-    const kstOffset = 9 * 60 * 60 * 1000
-    const kstDate = new Date(now.getTime() + kstOffset)
-    const todayStr = kstDate.toISOString().split('T')[0] // "2025-11-25"
+    console.log("✅ OpenAI JSON parsed:", parsedData);
 
-    console.log(`📅 생성된 날짜(KST): ${todayStr}`)
-
-    // 3. Supabase DB에 저장 (Service Role Key 사용 -> 권한 무시하고 쓰기 가능)
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
+    // 4. Supabase DB에 저장 (같은 todayStr 사용)
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { error } = await supabase
-      .from('daily_horoscopes')
-      .upsert({ 
-        date: todayStr, 
-        data: parsedData.ranking // { ranking: [...] } 에서 배열만 추출해서 저장
-      })
+      .from("daily_horoscopes")
+      .upsert({
+        date: todayStr,
+        data: parsedData.ranking,
+      });
 
-    if (error) throw error
+    if (error) throw error;
 
     return new Response(
-      JSON.stringify({ message: 'Success!', date: todayStr }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
-
+      JSON.stringify({ message: "Success!", date: todayStr }),
+      { headers: { "Content-Type": "application/json" } },
+    );
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.error("🔴 Handler error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
-})
+});
