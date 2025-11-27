@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppExitHandler } from "@/components/AppExitHandler";
 import { FortuneCard } from "@/components/horoscope/FortuneCard";
 import { LoadingView } from "@/components/horoscope/LoadingView";
+import { SplashScreen } from "@/components/horoscope/SplashScreen";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
@@ -46,7 +47,10 @@ export default function App() {
   );
 
   const loadHoroscope = useCallback(
-    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+    async ({
+      withLoading = false,
+      minDuration = 0,
+    }: { withLoading?: boolean; minDuration?: number } = {}) => {
       setTodayLabel(formatKoreanDate());
 
       if (withLoading) {
@@ -54,7 +58,13 @@ export default function App() {
       }
 
       try {
-        const result = await fetchHoroscope();
+        // API 호출과 타이머를 동시에 돌리고, 둘 다 끝날 때까지 기다림 (Promise.all)
+        // 안드로이드 Coroutine의 awaitAll() 이나 RxJava의 zip()과 비슷한 개념
+        const [result] = await Promise.all([
+          fetchHoroscope(),
+          new Promise((resolve) => setTimeout(resolve, minDuration)), // 최소 시간만큼 대기
+        ]);
+
         setData(result);
       } catch (error) {
         console.error(error);
@@ -75,7 +85,7 @@ export default function App() {
 
   // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
   useEffect(() => {
-    loadHoroscope({ withLoading: true });
+    loadHoroscope({ withLoading: true, minDuration: 2000 });
     scheduleDailyNotification();
   }, [loadHoroscope]);
 
@@ -88,6 +98,10 @@ export default function App() {
       setRefreshing(false);
     }
   }, [loadHoroscope]);
+
+  if (loading) {
+    return <SplashScreen />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
