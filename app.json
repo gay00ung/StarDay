@@ -13,7 +13,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "net.lateinit.starday",
+      "buildNumber": "1" // 안드로이드의 versionCode와 같은 역할
     },
     "android": {
       "adaptiveIcon": {
