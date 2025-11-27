@@ -17,6 +17,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
 import type { Fortune } from "@/types/horoscope";
+import { scheduleDailyNotification } from "@/utils/notifications";
 
 const formatKoreanDate = () => {
   const now = new Date();
@@ -75,6 +76,7 @@ export default function App() {
   // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
   useEffect(() => {
     loadHoroscope({ withLoading: true });
+    scheduleDailyNotification();
   }, [loadHoroscope]);
 
   const onRefresh = useCallback(async () => {
