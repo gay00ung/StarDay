@@ -1,27 +1,30 @@
 import { supabase } from "@/lib/supabase";
 import type { Fortune } from "@/types/horoscope";
 
-export const fetchHoroscope = async (): Promise<Fortune[]> => {
+// KST 기준 오늘 날짜 구하기
+const getKSTToday = (): string => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(new Date()); // e.g., 2025-01-07
+};
+
+export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
   try {
-    // 1. 오늘 날짜 구하기 (KST 기준, YYYY-MM-DD 형식)
-    // Use Intl with a fixed timezone to avoid device-local offsets.
-    const formatter = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const today = formatter.format(new Date()); // e.g., 2025-01-07
+    // 날짜가 없으면 KST 기준 오늘 날짜 사용
+    const targetDate = date || getKSTToday();
 
-    console.log(`📅 Supabase에서 ${today} 운세를 조회합니다.`);
+    console.log(`📅 Supabase에서 ${targetDate} 운세를 조회합니다.`);
 
-    // 2. Supabase DB에서 조회
-    // "daily_horoscopes" 테이블에서 "date"가 오늘인 데이터의 "data" 컬럼만 가져옴
+    // Supabase DB에서 조회
     const { data, error } = await supabase
       .from("daily_horoscopes")
       .select("data")
-      .eq("date", today)
-      .single(); // .single()은 결과가 딱 1개일 때 사용
+      .eq("date", targetDate)
+      .single();
 
     if (error) {
       // PGRST116 에러 코드는 "결과가 0개"라는 뜻 (아직 데이터가 없는 경우)
