@@ -139,7 +139,7 @@ export default function App() {
     }
   }, [loadHoroscope]);
 
-  if (loading) {
+  if (loading && data.length === 0) {
     return <SplashScreen />;
   }
 
