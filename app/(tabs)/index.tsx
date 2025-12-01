@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   RefreshControl,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -16,7 +19,8 @@ import { AppExitHandler } from "@/components/AppExitHandler";
 import { FortuneCard } from "@/components/horoscope/FortuneCard";
 import { LoadingView } from "@/components/horoscope/LoadingView";
 import { SplashScreen } from "@/components/horoscope/SplashScreen";
-import { Colors } from "@/constants/theme";
+import { Colors, Palette } from "@/constants/theme";
+import { ZODIAC_SIGNS } from "@/constants/zodiac";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
 import type { Fortune } from "@/types/horoscope";
@@ -51,6 +55,9 @@ export default function App() {
   const themeColors = Colors[colorScheme];
   const today = new Date();
   const isToday = isSameDay(selectedDate, today);
+
+  const [mySign, setMySign] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const styles = useMemo(
     () => createStyles(themeColors, colorScheme),
@@ -118,6 +125,38 @@ export default function App() {
     []
   );
 
+  useEffect(() => {
+    loadMySign();
+  }, []);
+
+  const loadMySign = async () => {
+    const savedSign = await AsyncStorage.getItem("myZodiacSign");
+    if (savedSign) setMySign(savedSign);
+  };
+
+  const saveMySign = async (sign: string) => {
+    await AsyncStorage.setItem("myZodiacSign", sign);
+    setMySign(sign);
+    setIsModalVisible(false);
+    Alert.alert("저장 완료", `나의 별자리가 ${sign}로 설정되었습니다.`, [
+      { text: "확인" },
+    ]);
+  };
+
+  const deleteMySign = async () => {
+    await AsyncStorage.removeItem("myZodiacSign");
+    setMySign(null);
+    setIsModalVisible(false);
+    Alert.alert("삭제 완료", `나의 별자리가 삭제되었습니다.`, [
+      { text: "확인" },
+    ]);
+  };
+
+  const myFortuneData = useMemo(() => {
+    if (!mySign || data.length === 0) return null;
+    return data.find((item) => item.sign === mySign);
+  }, [data, mySign]);
+
   // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
   useEffect(() => {
     loadHoroscope({ withLoading: true, minDuration: 2000 });
@@ -180,6 +219,16 @@ export default function App() {
             />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          onPress={() => setIsModalVisible(true)}
+          style={styles.settingButton}
+        >
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={themeColors.text}
+          />
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -198,8 +247,73 @@ export default function App() {
               colors={[themeColors.text]}
             />
           }
+          ListHeaderComponent={
+            myFortuneData ? (
+              <View style={styles.pinnedContainer}>
+                <View style={styles.pinnedLabelRow}>
+                  <Text style={styles.pinnedLabel}>
+                    📌 나의 운세 ({mySign})
+                  </Text>
+                </View>
+                <FortuneCard fortune={myFortuneData} />
+                <View style={styles.divider} />
+                <Text style={styles.rankingTitle}>🏆 전체 랭킹</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(true)}
+                style={styles.emptyPinContainer}
+              >
+                <Text style={styles.emptyPinText}>
+                  내 별자리를 설정하고 상단에 고정해보세요! 👉
+                </Text>
+              </TouchableOpacity>
+            )
+          }
         />
       )}
+      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>내 별자리 선택</Text>
+              <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                <Ionicons name="close" size={24} color={themeColors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.zodiacList}>
+              <View style={styles.zodiacGrid}>
+                {ZODIAC_SIGNS.map((sign) => (
+                  <TouchableOpacity
+                    key={sign}
+                    style={[
+                      styles.zodiacButton,
+                      mySign === sign && styles.zodiacButtonSelected,
+                    ]}
+                    onPress={() => {
+                      if (mySign === sign) {
+                        deleteMySign();
+                      } else {
+                        saveMySign(sign);
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.zodiacText,
+                        mySign === sign && styles.zodiacTextSelected,
+                      ]}
+                    >
+                      {sign}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -265,5 +379,110 @@ const createStyles = (
     },
     listContent: {
       padding: 16,
+    },
+    // 설정 버튼
+    settingButton: {
+      position: "absolute",
+      right: 20,
+      top: 20,
+      padding: 8,
+    },
+    // 핀 고정 스타일
+    pinnedContainer: {
+      marginBottom: 16,
+    },
+    pinnedLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    pinnedLabel: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: themeColors.tint,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: themeColors.border,
+      marginVertical: 16,
+    },
+    rankingTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: themeColors.text,
+      marginBottom: 10,
+    },
+    emptyPinContainer: {
+      padding: 16,
+      backgroundColor:
+        theme === "dark" ? themeColors.surface : Palette.lavenderBase,
+      borderRadius: 12,
+      marginBottom: 16,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      borderStyle: "dashed",
+    },
+    emptyPinText: {
+      color: themeColors.text,
+      fontWeight: "600",
+      fontSize: 14,
+    },
+    // 모달 스타일
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: themeColors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      height: "55%",
+      padding: 20,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: themeColors.text,
+    },
+    zodiacList: {
+      flex: 1,
+    },
+    zodiacGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
+    zodiacButton: {
+      width: "30%",
+      padding: 14,
+      backgroundColor: themeColors.background,
+      borderRadius: 12,
+      marginBottom: 12,
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    zodiacButtonSelected: {
+      backgroundColor: themeColors.tint,
+      borderColor: themeColors.highlight,
+    },
+    zodiacText: {
+      fontWeight: "600",
+      color: themeColors.text,
+      fontSize: 14,
+    },
+    zodiacTextSelected: {
+      color: Palette.sparkleWhite,
     },
   });
