@@ -35,8 +35,15 @@ const formatKoreanDate = (date: Date) => {
   return `${datePart} ${weekdayPart}`;
 };
 
+// KST 기준으로 날짜를 "YYYY-MM-DD" 형식으로 변환
 const formatDateString = (date: Date) => {
-  return date.toISOString().split("T")[0]; // "YYYY-MM-DD" 형식
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date); // "YYYY-MM-DD" 형식
 };
 
 const isSameDay = (date1: Date, date2: Date) => {
@@ -50,6 +57,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [isInitialMount, setIsInitialMount] = useState(true);
   const colorScheme = useColorScheme() ?? "light";
 
   const themeColors = Colors[colorScheme];
@@ -130,26 +138,45 @@ export default function App() {
   }, []);
 
   const loadMySign = async () => {
-    const savedSign = await AsyncStorage.getItem("myZodiacSign");
-    if (savedSign) setMySign(savedSign);
+    try {
+      const savedSign = await AsyncStorage.getItem("myZodiacSign");
+      if (savedSign) setMySign(savedSign);
+    } catch (error) {
+      console.error("⚠️ 별자리 불러오기 실패:", error);
+      // 불러오기 실패는 조용히 처리 (사용자에게 알리지 않음)
+    }
   };
 
   const saveMySign = async (sign: string) => {
-    await AsyncStorage.setItem("myZodiacSign", sign);
-    setMySign(sign);
-    setIsModalVisible(false);
-    Alert.alert("저장 완료", `나의 별자리가 ${sign}로 설정되었습니다.`, [
-      { text: "확인" },
-    ]);
+    try {
+      await AsyncStorage.setItem("myZodiacSign", sign);
+      setMySign(sign);
+      setIsModalVisible(false);
+      Alert.alert("저장 완료", `나의 별자리가 ${sign}로 설정되었습니다.`, [
+        { text: "확인" },
+      ]);
+    } catch (error) {
+      console.error("❌ 별자리 저장 실패:", error);
+      Alert.alert("오류", "별자리 저장에 실패했습니다. 다시 시도해주세요.", [
+        { text: "확인" },
+      ]);
+    }
   };
 
   const deleteMySign = async () => {
-    await AsyncStorage.removeItem("myZodiacSign");
-    setMySign(null);
-    setIsModalVisible(false);
-    Alert.alert("삭제 완료", `나의 별자리가 삭제되었습니다.`, [
-      { text: "확인" },
-    ]);
+    try {
+      await AsyncStorage.removeItem("myZodiacSign");
+      setMySign(null);
+      setIsModalVisible(false);
+      Alert.alert("삭제 완료", `나의 별자리가 삭제되었습니다.`, [
+        { text: "확인" },
+      ]);
+    } catch (error) {
+      console.error("❌ 별자리 삭제 실패:", error);
+      Alert.alert("오류", "별자리 삭제에 실패했습니다. 다시 시도해주세요.", [
+        { text: "확인" },
+      ]);
+    }
   };
 
   const myFortuneData = useMemo(() => {
@@ -157,16 +184,19 @@ export default function App() {
     return data.find((item) => item.sign === mySign);
   }, [data, mySign]);
 
-  // 안드로이드의 onCreate() 같은 느낌 (화면 켜지면 실행)
+  // 초기 마운트 시 실행 (알림 예약 + 운세 로드)
   useEffect(() => {
-    loadHoroscope({ withLoading: true, minDuration: 2000 });
     scheduleDailyNotification();
+    loadHoroscope({ withLoading: true, minDuration: 2000, date: selectedDate });
+    setIsInitialMount(false);
   }, []);
 
-  // 날짜 변경 시 데이터 다시 로드
+  // 날짜 변경 시 데이터 다시 로드 (초기 마운트 제외)
   useEffect(() => {
-    loadHoroscope({ withLoading: true, date: selectedDate });
-  }, [selectedDate]);
+    if (!isInitialMount) {
+      loadHoroscope({ withLoading: true, date: selectedDate });
+    }
+  }, [selectedDate, isInitialMount]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

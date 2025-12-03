@@ -19,9 +19,9 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
 
     console.log(`📅 Supabase에서 ${targetDate} 운세를 조회합니다.`);
 
-    // 타임아웃 설정 (10초) - 간헐적 네트워크 문제 대응
+    // 타임아웃 설정 (15초) - 간헐적 네트워크 문제 대응
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('네트워크 요청 시간 초과')), 10000)
+      setTimeout(() => reject(new Error('네트워크 요청 시간 초과')), 15000)
     );
 
     // Supabase DB에서 조회 (타임아웃과 함께)
@@ -29,16 +29,26 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
       .from("daily_horoscopes")
       .select("data")
       .eq("date", targetDate)
-      .maybeSingle();
+      .single();
 
-    const { data, error } = await Promise.race([
+    const result = await Promise.race([
       fetchPromise,
       timeoutPromise
     ]).catch((err) => {
       console.error('⚠️ 네트워크 에러 발생:', err);
-      // 타임아웃이나 네트워크 에러 시 빈 결과 반환
-      return { data: null, error: { code: 'NETWORK_ERROR', message: err.message } };
+      // 타임아웃이나 네트워크 에러 시 에러 객체 반환
+      return {
+        data: null,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: err instanceof Error ? err.message : String(err),
+          details: null,
+          hint: null
+        }
+      };
     });
+
+    const { data, error } = result;
 
     if (error) {
       // PGRST116 에러 코드는 "결과가 0개"라는 뜻 (아직 데이터가 없는 경우)
@@ -64,11 +74,11 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
     }
 
     // DB에 저장된 JSON 구조에 따라 유연하게 처리
-    const result = data.data;
+    const horoscopeData = data.data;
 
     // 만약 { ranking: [...] } 형태로 저장되어 있다면
-    if (result.ranking) {
-      const list: Fortune[] = result.ranking;
+    if (horoscopeData.ranking) {
+      const list: Fortune[] = horoscopeData.ranking;
 
       return list
         .filter((item) => typeof item.rank === "number")
@@ -76,8 +86,8 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
     }
 
     // 만약 [...] 배열 형태로 바로 저장되어 있다면
-    if (Array.isArray(result)) {
-      const list: Fortune[] = result;
+    if (Array.isArray(horoscopeData)) {
+      const list: Fortune[] = horoscopeData;
 
       return list.filter((item) => typeof item.rank === "number")
         .sort((a, b) => a.rank - b.rank);
