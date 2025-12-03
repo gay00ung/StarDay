@@ -15,9 +15,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "net.lateinit.starday",
-      "buildNumber": "1" // 안드로이드의 versionCode와 같은 역할
+      "buildNumber": "2" // 안드로이드의 versionCode와 같은 역할
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/icon.png",
@@ -26,7 +27,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "net.lateinit.starday"
+      "package": "net.lateinit.starday",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
     "web": {
       "output": "static",
