@@ -19,12 +19,26 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
 
     console.log(`📅 Supabase에서 ${targetDate} 운세를 조회합니다.`);
 
-    // Supabase DB에서 조회
-    const { data, error } = await supabase
+    // 타임아웃 설정 (10초) - 간헐적 네트워크 문제 대응
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('네트워크 요청 시간 초과')), 10000)
+    );
+
+    // Supabase DB에서 조회 (타임아웃과 함께)
+    const fetchPromise = supabase
       .from("daily_horoscopes")
       .select("data")
       .eq("date", targetDate)
-      .single();
+      .maybeSingle();
+
+    const { data, error } = await Promise.race([
+      fetchPromise,
+      timeoutPromise
+    ]).catch((err) => {
+      console.error('⚠️ 네트워크 에러 발생:', err);
+      // 타임아웃이나 네트워크 에러 시 빈 결과 반환
+      return { data: null, error: { code: 'NETWORK_ERROR', message: err.message } };
+    });
 
     if (error) {
       // PGRST116 에러 코드는 "결과가 0개"라는 뜻 (아직 데이터가 없는 경우)
@@ -32,7 +46,16 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
         console.warn("⚠️ 아직 오늘의 운세 데이터가 없습니다.");
         return []; // 빈 배열 반환 (에러 아님)
       }
-      throw new Error(error.message);
+
+      // 네트워크 에러인 경우 빈 배열 반환 (앱 크래시 방지)
+      if (error.code === 'NETWORK_ERROR') {
+        console.warn("⚠️ 네트워크 연결 문제로 운세를 불러올 수 없습니다.");
+        return [];
+      }
+
+      // 기타 에러는 로그만 남기고 빈 배열 반환
+      console.error('❌ Supabase 에러:', error.message);
+      return [];
     }
 
     // 3. 데이터 반환
@@ -62,8 +85,8 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
 
     return [];
   } catch (error) {
-    console.error("Fetch Error:", error);
-    // UI가 멈추지 않게 빈 배열 반환 또는 에러 throw 선택
-    throw error;
+    console.error("❌ Fetch Error:", error);
+    // UI가 멈추지 않게 빈 배열 반환 (앱 크래시 방지)
+    return [];
   }
 };
