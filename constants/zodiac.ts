@@ -13,3 +13,6 @@ export const ZODIAC_MAP: { [key: string]: string } = {
   "물병자리": "Aquarius",
   "물고기자리": "Pisces",
 };
+
+// 별자리 목록 배열
+export const ZODIAC_SIGNS = Object.keys(ZODIAC_MAP);
