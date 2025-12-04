@@ -266,7 +266,9 @@ export default function App() {
       ) : (
         <FlatList
           data={data}
-          renderItem={({ item }) => <FortuneCard fortune={item} />}
+          renderItem={({ item, index }) => (
+            <FortuneCard fortune={item} index={index} />
+          )}
           keyExtractor={(item) => item.rank.toString()}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -285,7 +287,7 @@ export default function App() {
                     📌 나의 운세 ({mySign})
                   </Text>
                 </View>
-                <FortuneCard fortune={myFortuneData} />
+                <FortuneCard fortune={myFortuneData} index={-1} />
                 <View style={styles.divider} />
                 <Text style={styles.rankingTitle}>🏆 전체 랭킹</Text>
               </View>
