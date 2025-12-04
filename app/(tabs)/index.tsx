@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DefaultPreference from "react-native-default-preference";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppExitHandler } from "@/components/AppExitHandler";
@@ -25,6 +26,34 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
 import type { Fortune } from "@/types/horoscope";
 import { scheduleDailyNotification } from "@/utils/notifications";
+
+// 위젯과 공유할 그룹 이름
+const APP_GROUP = "group.net.lateinit.starday";
+
+const saveToWidget = async (fortuneData: any) => {
+  try {
+    // 위젯이 읽을 파일명(저장소 이름) 설정
+    // Android: SharedPreferences 파일명 설정
+    // iOS: App Group Suite Name 설정
+    await DefaultPreference.setName(APP_GROUP);
+
+    // JSON 데이터를 문자열로 변환
+    const widgetData = {
+      rank: fortuneData.rank.toString(),
+      sign: fortuneData.sign,
+      content: fortuneData.content,
+      lucky_item: fortuneData.lucky_item,
+      lucky_color: fortuneData.lucky_color,
+    };
+
+    // String 형태로 저장
+    await DefaultPreference.set("WIDGET_DATA", JSON.stringify(widgetData));
+
+    console.log("✅ 위젯용 데이터 저장 완료");
+  } catch (error) {
+    console.error("❌ 위젯용 운세 데이터 저장 실패:", error);
+  }
+};
 
 const formatKoreanDate = (date: Date) => {
   const datePart = date.toLocaleDateString("ko-KR", {
@@ -116,6 +145,13 @@ export default function App() {
         ]);
 
         setData(result);
+
+        // 오늘 날짜인 경우에만 위젯용 데이터 저장
+        if (isSameDay(targetDate, new Date()) && result.length > 0) {
+          const fortuneData =
+            result.find((item) => item.sign === mySign) || result[0];
+          await saveToWidget(fortuneData);
+        }
       } catch (error) {
         console.error(error);
         Alert.alert(
