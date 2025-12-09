@@ -19,9 +19,9 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
 
     console.log(`📅 Supabase에서 ${targetDate} 운세를 조회합니다.`);
 
-    // 타임아웃 설정 (15초) - 간헐적 네트워크 문제 대응
+    // 타임아웃 설정 (30초) - 간헐적 네트워크 문제 대응
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('네트워크 요청 시간 초과')), 15000)
+      setTimeout(() => reject(new Error('TIMEOUT')), 30000)
     );
 
     // Supabase DB에서 조회 (타임아웃과 함께)
@@ -40,7 +40,7 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
       return {
         data: null,
         error: {
-          code: 'NETWORK_ERROR',
+          code: err.message === 'TIMEOUT' ? 'TIMEOUT' : 'NETWORK_ERROR',
           message: err instanceof Error ? err.message : String(err),
           details: null,
           hint: null
@@ -48,33 +48,37 @@ export const fetchHoroscope = async (date?: string): Promise<Fortune[]> => {
       };
     });
 
-    const { data, error } = result;
-
-    if (error) {
+    if (result.error) {
       // PGRST116 에러 코드는 "결과가 0개"라는 뜻 (아직 데이터가 없는 경우)
-      if (error.code === "PGRST116") {
+      if (result.error.code === "PGRST116") {
         console.warn("⚠️ 아직 오늘의 운세 데이터가 없습니다.");
-        return []; // 빈 배열 반환 (에러 아님)
+        throw new Error("아직 운세가 생성되지 않았습니다. 잠시 후 다시 시도해주세요.");
       }
 
-      // 네트워크 에러인 경우 빈 배열 반환 (앱 크래시 방지)
-      if (error.code === 'NETWORK_ERROR') {
+      // 타임아웃 에러인 경우
+      if (result.error.code === 'TIMEOUT') {
+        console.warn("⚠️ 서버 응답 시간 초과");
+        throw new Error("서버 응답이 느립니다. 잠시 후 다시 시도해주세요.");
+      }
+      
+      // 네트워크 에러인 경우
+      if (result.error.code === 'NETWORK_ERROR') {
         console.warn("⚠️ 네트워크 연결 문제로 운세를 불러올 수 없습니다.");
-        return [];
+        throw new Error("인터넷 연결을 확인해주세요.");
       }
 
-      // 기타 에러는 로그만 남기고 빈 배열 반환
-      console.error('❌ Supabase 에러:', error.message);
-      return [];
+      // 기타 에러
+      console.error('❌ Supabase 에러:', result.error.message);
+      throw new Error(`운세 데이터를 불러올 수 없습니다: ${result.error.message}`);
     }
 
     // 3. 데이터 반환
-    if (!data || !data.data) {
-      return [];
+    if (!result.data || !result.data.data) {
+      throw new Error("운세 데이터가 비어있습니다.");
     }
 
     // DB에 저장된 JSON 구조에 따라 유연하게 처리
-    const horoscopeData = data.data;
+    const horoscopeData = result.data.data;
 
     // 만약 { ranking: [...] } 형태로 저장되어 있다면
     if (horoscopeData.ranking) {

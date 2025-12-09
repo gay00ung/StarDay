@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DefaultPreference from "react-native-default-preference";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppExitHandler } from "@/components/AppExitHandler";
@@ -25,6 +26,34 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
 import type { Fortune } from "@/types/horoscope";
 import { scheduleDailyNotification } from "@/utils/notifications";
+
+// 위젯과 공유할 그룹 이름
+const APP_GROUP = "group.net.lateinit.starday";
+
+const saveToWidget = async (fortuneData: any) => {
+  try {
+    // 위젯이 읽을 파일명(저장소 이름) 설정
+    // Android: SharedPreferences 파일명 설정
+    // iOS: App Group Suite Name 설정
+    await DefaultPreference.setName(APP_GROUP);
+
+    // JSON 데이터를 문자열로 변환
+    const widgetData = {
+      rank: fortuneData.rank.toString(),
+      sign: fortuneData.sign,
+      content: fortuneData.content,
+      lucky_item: fortuneData.lucky_item,
+      lucky_color: fortuneData.lucky_color,
+    };
+
+    // String 형태로 저장
+    await DefaultPreference.set("WIDGET_DATA", JSON.stringify(widgetData));
+
+    console.log("✅ 위젯용 데이터 저장 완료");
+  } catch (error) {
+    console.error("❌ 위젯용 운세 데이터 저장 실패:", error);
+  }
+};
 
 const formatKoreanDate = (date: Date) => {
   const datePart = date.toLocaleDateString("ko-KR", {
@@ -99,7 +128,8 @@ export default function App() {
       withLoading = false,
       minDuration = 0,
       date,
-    }: { withLoading?: boolean; minDuration?: number; date?: Date } = {}) => {
+      retryCount = 0,
+    }: { withLoading?: boolean; minDuration?: number; date?: Date; retryCount?: number } = {}) => {
       if (withLoading) {
         setLoading(true);
       }
@@ -116,13 +146,38 @@ export default function App() {
         ]);
 
         setData(result);
+
+        // 오늘 날짜 + 사용자의 별자리가 존재하는 경우에만 위젯용 데이터 저장
+        if (isSameDay(targetDate, new Date()) && mySign && result.length > 0) {
+          const myFortuneData = result.find((item) => item.sign === mySign);
+          if (myFortuneData) {
+            await saveToWidget(myFortuneData);
+          }
+        }
       } catch (error) {
         console.error(error);
+        
+        // 재시도 로직 (최대 2번)
+        if (retryCount < 2 && error instanceof Error && 
+            (error.message.includes("시간 초과") || error.message.includes("느립니다"))) {
+          
+          console.log(`🔄 재시도 중... (${retryCount + 1}/2)`);
+          
+          // 1초 대기 후 재시도
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return loadHoroscope({ withLoading, minDuration, date, retryCount: retryCount + 1 });
+        }
+        
+        // 재시도 실패 또는 다른 에러
         Alert.alert(
           "오류",
           error instanceof Error
             ? error.message
-            : "운세를 불러오는데 실패했습니다."
+            : "운세를 불러오는데 실패했습니다.",
+          [
+            { text: "취소", style: "cancel" },
+            { text: "다시 시도", onPress: () => loadHoroscope({ withLoading, date }) }
+          ]
         );
       } finally {
         if (withLoading) {
@@ -130,7 +185,7 @@ export default function App() {
         }
       }
     },
-    []
+    [selectedDate, mySign]
   );
 
   useEffect(() => {
@@ -266,7 +321,9 @@ export default function App() {
       ) : (
         <FlatList
           data={data}
-          renderItem={({ item }) => <FortuneCard fortune={item} />}
+          renderItem={({ item, index }) => (
+            <FortuneCard fortune={item} index={index} />
+          )}
           keyExtractor={(item) => item.rank.toString()}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -285,7 +342,7 @@ export default function App() {
                     📌 나의 운세 ({mySign})
                   </Text>
                 </View>
-                <FortuneCard fortune={myFortuneData} />
+                <FortuneCard fortune={myFortuneData} index={-1} />
                 <View style={styles.divider} />
                 <Text style={styles.rankingTitle}>🏆 전체 랭킹</Text>
               </View>
