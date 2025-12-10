@@ -6,12 +6,18 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+import androidx.work.ExistingPeriodicWorkPolicy
 
 class HoroscopeWidget : AppWidgetProvider() {
+    private val WORK_TAG = "horoscope_widget_update_work"
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -23,11 +29,27 @@ class HoroscopeWidget : AppWidgetProvider() {
     }
 
     override fun onEnabled(context: Context) {
-        // Enter relevant functionality for when the first widget is created
+        super.onEnabled(context)
+        // 위젯이 하나라도 생성되면 주기적 작업 시작
+        startPeriodUpdate(context)
     }
 
     override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
+        super.onDisabled(context)
+        // 모든 위젯이 제거되면 작업 취소 (배터리 절약)
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_TAG)
+    }
+
+    private fun startPeriodUpdate(context: Context) {
+        val updateRequest = PeriodicWorkRequestBuilder<HoroscopeUpdateWorker>(
+            15, TimeUnit.MINUTES // 최소 간격 15분
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_TAG,
+            ExistingPeriodicWorkPolicy.KEEP, // 이미 예약된 작업이 있으면 유지 (중복 실행 방지)
+            updateRequest
+        )
     }
 }
 
