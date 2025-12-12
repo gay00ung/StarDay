@@ -1,19 +1,10 @@
 // Deno 환경(서버)에서 돌아감
 import { createClient } from "@supabase/supabase-js";
+import { getKSTToday, weekdayNames } from "../_shared/utils.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-const weekdayNames = [
-  "일요일",
-  "월요일",
-  "화요일",
-  "수요일",
-  "목요일",
-  "금요일",
-  "토요일",
-];
 
 // 프롬프트 (상수, 템플릿용)
 const PROMPT_TEMPLATE = `
@@ -90,16 +81,14 @@ const PROMPT_TEMPLATE = `
         출력은 반드시 **JSON만**, 여분 문장 금지.
 `;
 
-Deno.serve(async (req) => {
+Deno.serve(async (_req) => {
   try {
     // Supabase 클라이언트 초기화
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // 1. 오늘 날짜 (KST 기준 계산) — 여기서 한 번만 계산해서 전체에 사용
-    const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstDate = new Date(now.getTime() + kstOffset);
-    const todayStr = kstDate.toISOString().split("T")[0]; // "2025-11-25"
+    // 1. 오늘 날짜 (KST 기준) - 공통 함수 사용
+    const todayStr = getKSTToday();
+    const kstDate = new Date(todayStr + "T00:00:00+09:00"); // KST 기준 Date 객체
     const weekdayKo = weekdayNames[kstDate.getDay()];
 
     console.log(`📅 생성된 날짜(KST): ${todayStr} (${weekdayKo})`);
