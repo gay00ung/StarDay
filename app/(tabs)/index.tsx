@@ -21,7 +21,7 @@ import { FortuneCard } from "@/components/horoscope/FortuneCard";
 import { LoadingView } from "@/components/horoscope/LoadingView";
 import { SplashScreen } from "@/components/horoscope/SplashScreen";
 import { Colors, Palette } from "@/constants/theme";
-import { ZODIAC_SIGNS } from "@/constants/zodiac";
+import { ZODIAC_MAPPING, ZODIAC_SIGNS } from "@/constants/zodiac";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { fetchHoroscope } from "@/services/horoscopeService";
 import type { Fortune } from "@/types/horoscope";
@@ -95,6 +95,7 @@ export default function App() {
 
   const [mySign, setMySign] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [language, setLanguage] = useState<"ko" | "en">("ko"); // 언어 설정
 
   const styles = useMemo(
     () => createStyles(themeColors, colorScheme),
@@ -129,7 +130,14 @@ export default function App() {
       minDuration = 0,
       date,
       retryCount = 0,
-    }: { withLoading?: boolean; minDuration?: number; date?: Date; retryCount?: number } = {}) => {
+      language: langParam,
+    }: {
+      withLoading?: boolean;
+      minDuration?: number;
+      date?: Date;
+      retryCount?: number;
+      language?: "ko" | "en";
+    } = {}) => {
       if (withLoading) {
         setLoading(true);
       }
@@ -137,11 +145,12 @@ export default function App() {
       try {
         const targetDate = date || selectedDate;
         const dateString = formatDateString(targetDate);
+        const targetLang = langParam ?? language;
 
         // API 호출과 타이머를 동시에 돌리고, 둘 다 끝날 때까지 기다림 (Promise.all)
         // 안드로이드 Coroutine의 awaitAll() 이나 RxJava의 zip()과 비슷한 개념
         const [result] = await Promise.all([
-          fetchHoroscope(dateString),
+          fetchHoroscope(dateString, targetLang), // 언어 파라미터 추가
           new Promise((resolve) => setTimeout(resolve, minDuration)), // 최소 시간만큼 대기
         ]);
 
@@ -156,18 +165,27 @@ export default function App() {
         }
       } catch (error) {
         console.error(error);
-        
+
         // 재시도 로직 (최대 2번)
-        if (retryCount < 2 && error instanceof Error && 
-            (error.message.includes("시간 초과") || error.message.includes("느립니다"))) {
-          
+        if (
+          retryCount < 2 &&
+          error instanceof Error &&
+          (error.message.includes("시간 초과") ||
+            error.message.includes("느립니다"))
+        ) {
           console.log(`🔄 재시도 중... (${retryCount + 1}/2)`);
-          
+
           // 1초 대기 후 재시도
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return loadHoroscope({ withLoading, minDuration, date, retryCount: retryCount + 1 });
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return loadHoroscope({
+            withLoading,
+            minDuration,
+            date,
+            retryCount: retryCount + 1,
+            language: langParam,
+          });
         }
-        
+
         // 재시도 실패 또는 다른 에러
         Alert.alert(
           "오류",
@@ -176,7 +194,10 @@ export default function App() {
             : "운세를 불러오는데 실패했습니다.",
           [
             { text: "취소", style: "cancel" },
-            { text: "다시 시도", onPress: () => loadHoroscope({ withLoading, date }) }
+            {
+              text: "다시 시도",
+              onPress: () => loadHoroscope({ withLoading, date }),
+            },
           ]
         );
       } finally {
@@ -237,10 +258,21 @@ export default function App() {
     }
   };
 
+  // 언어 토글 함수
+  const toggleLanguage = useCallback(() => {
+    const newLang = language === "ko" ? "en" : "ko";
+    console.log(`🌐 언어 변경: ${language} → ${newLang}`);
+    setLanguage(newLang);
+    // 언어 변경 시 즉시 데이터 다시 로드
+    loadHoroscope({ withLoading: true, language: newLang });
+  }, [language, loadHoroscope]);
+
   const myFortuneData = useMemo(() => {
     if (!mySign || data.length === 0) return null;
-    return data.find((item) => item.sign === mySign);
-  }, [data, mySign]);
+    // 언어에 맞게 별자리 이름 변환
+    const searchSign = language === "en" ? ZODIAC_MAPPING[mySign] : mySign;
+    return data.find((item) => item.sign === searchSign);
+  }, [data, mySign, language]);
 
   // 초기 마운트 시 실행 (알림 예약 + 운세 로드)
   useEffect(() => {
@@ -307,16 +339,26 @@ export default function App() {
             />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={() => setIsModalVisible(true)}
-          style={styles.settingButton}
-        >
-          <Ionicons
-            name="settings-outline"
-            size={24}
-            color={themeColors.text}
-          />
-        </TouchableOpacity>
+        {/* 우측 버튼 그룹 */}
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity
+            onPress={() => toggleLanguage()}
+            style={styles.languageButton}
+          >
+            <Ionicons name="globe-outline" size={24} color={themeColors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsModalVisible(true)}
+            style={styles.settingButton}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={24}
+              color={themeColors.text}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -470,11 +512,26 @@ const createStyles = (
     listContent: {
       padding: 16,
     },
+    headerRightButtons: {
+      position: "absolute",
+      right: 5,
+      top: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+    },
+    // 언어 변경 버튼
+    languageButton: {
+      position: "absolute",
+      right: 30,
+      top: 16,
+      padding: 8,
+    },
     // 설정 버튼
     settingButton: {
       position: "absolute",
-      right: 20,
-      top: 20,
+      right: 0,
+      top: 16,
       padding: 8,
     },
     // 핀 고정 스타일

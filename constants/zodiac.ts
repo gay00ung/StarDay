@@ -1,5 +1,5 @@
 // 별자리 한글 이름 -> 영어 이름 매핑 테이블
-export const ZODIAC_MAP: { [key: string]: string } = {
+export const ZODIAC_MAPPING: { [key: string]: string } = {
   "양자리": "Aries",
   "황소자리": "Taurus",
   "쌍둥이자리": "Gemini",
@@ -12,7 +12,12 @@ export const ZODIAC_MAP: { [key: string]: string } = {
   "염소자리": "Capricorn",
   "물병자리": "Aquarius",
   "물고기자리": "Pisces",
-};
+} as const;
 
 // 별자리 목록 배열
-export const ZODIAC_SIGNS = Object.keys(ZODIAC_MAP);
+export const ZODIAC_SIGNS = Object.keys(ZODIAC_MAPPING);
+
+// 역방향 매핑
+export const ZODIAC_EN_TO_KO = Object.fromEntries(
+  Object.entries(ZODIAC_MAPPING).map(([ko, en]) => [en, ko])
+);
