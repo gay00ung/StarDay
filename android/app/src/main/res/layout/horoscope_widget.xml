@@ -52,7 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
             android:text="🔄"
             android:textSize="20sp" />
     </RelativeLayout>
