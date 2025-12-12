@@ -2,7 +2,7 @@
   "expo": {
     "name": "호시링링",
     "slug": "StarDay",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -15,10 +15,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "net.lateinit.starday",
-      "buildNumber": "8" // 안드로이드의 versionCode와 같은 역할
+      "buildNumber": "9" // 안드로이드의 versionCode와 같은 역할
     },
     "android": {
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/icon.png",
