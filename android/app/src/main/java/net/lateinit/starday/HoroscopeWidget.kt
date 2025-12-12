@@ -3,15 +3,28 @@ package net.lateinit.starday
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.RemoteViews
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+import androidx.work.ExistingPeriodicWorkPolicy
 
 class HoroscopeWidget : AppWidgetProvider() {
+    companion object {
+        const val ACTION_REFRESH = "net.lateinit.starday.WIDGET_REFRESH"
+        private const val TAG = "HoroscopeWidget"
+        const val WORK_TAG = "horoscope_widget_update_work"
+    }
+
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -23,11 +36,45 @@ class HoroscopeWidget : AppWidgetProvider() {
     }
 
     override fun onEnabled(context: Context) {
-        // Enter relevant functionality for when the first widget is created
+        super.onEnabled(context)
+        // 위젯이 하나라도 생성되면 주기적 작업 시작
+        startPeriodUpdate(context)
     }
 
     override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
+        super.onDisabled(context)
+        // 모든 위젯이 제거되면 작업 취소 (배터리 절약)
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_TAG)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_REFRESH) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val ids = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
+                ?: appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, HoroscopeWidget::class.java)
+                )
+            val prefs =
+                context.getSharedPreferences("group.net.lateinit.starday", Context.MODE_PRIVATE)
+            val snapshot = prefs.getString("WIDGET_DATA", "null")
+            Log.d(TAG, "Refresh click: ids=${ids.joinToString()} data=$snapshot")
+            ids.forEach { id ->
+                updateAppWidget(context, appWidgetManager, id)
+            }
+        }
+    }
+
+    private fun startPeriodUpdate(context: Context) {
+        val updateRequest = PeriodicWorkRequestBuilder<HoroscopeUpdateWorker>(
+            15, TimeUnit.MINUTES // 최소 간격 15분
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_TAG,
+            ExistingPeriodicWorkPolicy.KEEP, // 이미 예약된 작업이 있으면 유지 (중복 실행 방지)
+            updateRequest
+        )
     }
 }
 
@@ -96,6 +143,19 @@ internal fun updateAppWidget(
 
     // 위젯 전체를 클릭 가능하게 설정
     views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+
+    // 위젯 업데이트 버튼 연동
+    val refreshIntent = Intent(context, HoroscopeWidget::class.java).apply {
+        action = HoroscopeWidget.ACTION_REFRESH
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
+    }
+    val refreshPendingIntent = PendingIntent.getBroadcast(
+        context,
+        appWidgetId,
+        refreshIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent)
 
     // 위젯 업데이트
     appWidgetManager.updateAppWidget(appWidgetId, views)
