@@ -204,8 +204,11 @@ export default function App() {
 
   const saveMySign = async (sign: string) => {
     try {
+      console.log("💾 별자리 저장 시작:", sign);
       await AsyncStorage.setItem("myZodiacSign", sign);
+      console.log("✅ AsyncStorage 저장 완료");
       setMySign(sign);
+      console.log("✅ State 업데이트 완료");
       setIsModalVisible(false);
       Alert.alert("저장 완료", `나의 별자리가 ${sign}로 설정되었습니다.`, [
         { text: "확인" },
