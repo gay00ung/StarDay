@@ -9,37 +9,53 @@
     android:clickable="true">
 
     <!-- 상단: 랭킹 + 이모지 -->
-    <LinearLayout
+    <RelativeLayout
         android:id="@+id/top_section"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_alignParentStart="true">
 
-        <TextView
-            android:id="@+id/widget_rank"
+        <LinearLayout
+            android:id="@+id/top_left"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/rank_badge_background"
-            android:paddingStart="12dp"
-            android:paddingTop="6dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="6dp"
-            android:text="4위"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:layout_alignParentStart="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_rank"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rank_badge_background"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="4위"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_emoji"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="✨"
+                android:textSize="20sp" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/widget_emoji"
+            android:id="@+id/widget_refresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
             android:layout_marginStart="6dp"
-            android:text="✨"
+            android:text="🔄"
             android:textSize="20sp" />
-    </LinearLayout>
+    </RelativeLayout>
 
     <!-- 별자리 이름 -->
     <TextView
