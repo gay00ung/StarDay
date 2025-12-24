@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "net.lateinit.starday",
-      "buildNumber": "9" // 안드로이드의 versionCode와 같은 역할
+      "buildNumber": "9" // 안드로이드의 versionCode와 같은 역할ㅍ
     },
     "android": {
       "versionCode": 9,
