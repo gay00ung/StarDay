@@ -9,7 +9,32 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Android (native build)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.cxx/
+android/app/.cxx/
+android/app/captures/
+android/.idea/
+android/*.iml
+android/app/*.iml
+
+# iOS (native build)
+ios/*.mode1v3
+ios/*.mode2v3
+ios/*.moved-aside
+ios/*.pbxuser
+ios/*.perspectivev3
+ios/*.userid
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+
+# Native Keys (Secrets)
 .kotlin/
 *.orig.*
 *.jks
@@ -26,26 +51,13 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# macOS & System
 .DS_Store
 *.pem
+Thumbs.db
+*.log
 
 # local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-
-*.log
-.DS_Store
-Thumbs.db
-
 .env
 .env.local
 .env.development.local
@@ -53,5 +65,11 @@ Thumbs.db
 .env.production.local
 *.env
 
+# typescript
+*.tsbuildinfo
+
+# Editor
 .vscode/
 .idea/
+
+app-example
